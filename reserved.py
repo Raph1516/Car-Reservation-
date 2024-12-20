@@ -1,334 +1,398 @@
-from tkinter import *
-from tkinter import ttk
 import sqlite3
+from tkinter import *
 
-def setup_database():
-    conn = sqlite3.connect('customers.db')
-    cursor = conn.cursor()
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS customers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            contact TEXT NOT NULL,
-            address TEXT NOT NULL,
-            car TEXT NOT NULL,
-            quantity INTEGER NOT NULL
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
-
-setup_database()
-
-def showChooseWindow():
-    window.withdraw()
-    choose_window = Toplevel()
-    choose_window.geometry('600x400+485+175')
-    choose_window.title('Car Reservation System')
-    choose_window.config(background='#FEFEF2', pady=40)
-
-    Label(choose_window, text='Choose', font=('Poppins', 18), bg='#FFFDC8').pack(pady=20)
-
-    Button(choose_window, text='Log In', font=('Consolas', 15), padx=15,
-           command=lambda: [choose_window.destroy(), logIn()],
-           bg='blue', fg='white', activebackground='darkblue').pack(pady=10)
-
-    Button(choose_window, text='Sign Up', font=('Consolas', 15), padx=15,
-           command=lambda: [choose_window.destroy(), signUp()],
-           bg='blue', fg='white', activebackground='darkblue').pack(pady=10)
-
-    choose_window.protocol("WM_DELETE_WINDOW", lambda: [choose_window.destroy(), window.deiconify()])
-
-def signUp():
-    def toggle_password_visibility(entry, show_button):
-        if entry.cget('show') == '*':
-            entry.config(show='')
-            show_button.config(text='Hide')
-        else:
-            entry.config(show='*')
-            show_button.config(text='Show')
-
-    def sign_up_action():
-        username_val = username.get().strip()
-        password_val = pw.get().strip()
-        confirm_pw_val = confirm_pw.get().strip()
-
-        if not username_val or not password_val or not confirm_pw_val:
-            error_label.config(text="All fields are required!", fg="red")
-            return
-
-        if password_val != confirm_pw_val:
-            error_label.config(text="Passwords do not match!", fg="red")
-            return
-
-        conn = sqlite3.connect('customers.db')
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username_val, password_val))
-            conn.commit()
-            error_label.config(text="Account created successfully!", fg="green")
-            signup.after(2000, lambda: [signup.destroy(), showChooseWindow()])
-        except sqlite3.IntegrityError:
-            error_label.config(text="Username already exists!", fg="red")
-        finally:
-            conn.close()
-
-    signup = Toplevel()
-    signup.geometry("500x400+485+175")
-    signup.title('SignUp Form')
-
-    username = StringVar()
-    pw = StringVar()
-    confirm_pw = StringVar()
-
-    Label(signup, text='Sign Up', font=('Consolas', 25)).pack(pady=10)
-
-    frame = Frame(signup)
-    frame.pack(pady=10)
-
-    Label(frame, text='Username:', font=('Poppins', 15)).grid(row=0, column=0, sticky=E)
-    Entry(frame, textvariable=username).grid(row=0, column=1, pady=5)
-
-    Label(frame, text='Password:', font=('Poppins', 15)).grid(row=1, column=0, sticky=E)
-    password_entry = Entry(frame, textvariable=pw, show='*')
-    password_entry.grid(row=1, column=1, pady=5)
-
-    show_password_btn = Button(frame, text='Show', command=lambda: toggle_password_visibility(password_entry, show_password_btn))
-    show_password_btn.grid(row=1, column=2)
-
-    Label(frame, text='Confirm Password:', font=('Poppins', 15)).grid(row=2, column=0, sticky=E)
-    confirm_pw_entry = Entry(frame, textvariable=confirm_pw, show='*')
-    confirm_pw_entry.grid(row=2, column=1, pady=5)
-
-    show_confirm_password_btn = Button(frame, text='Show', command=lambda: toggle_password_visibility(confirm_pw_entry, show_confirm_password_btn))
-    show_confirm_password_btn.grid(row=2, column=2)
-
-    error_label = Label(signup, text="", font=('Poppins', 12))
-    error_label.pack(pady=10)
-
-    Button(signup, text='Sign Up', command=sign_up_action, font=('Consolas', 15), padx=10, pady=5,
-           bg='blue', fg='white', activebackground='darkblue').pack(pady=10)
-
-def show_main_menu():
-    main_menu = Toplevel()
-    main_menu.geometry('500x400+490+175')
-    main_menu.title('Main Menu')
-    main_menu.config(background='#FFFACD')
-
-    Label(main_menu, text='Main Menu', font=('Consolas', 25), bg='#FFFACD').pack(pady=20)
-
-    Button(main_menu, text='Customer Form', font=('Consolas', 15), padx=15,
-           bg='blue', fg='white', activebackground='darkblue', command=open_customer_window).pack(pady=10)
-    Button(main_menu, text='Show Data', font=('Consolas', 15), bg='blue', fg='white',
-           command=show_database).pack(pady=20)
-    Button(main_menu, text='Logout', font=('Consolas', 15), padx=15,
-           bg='blue', fg='white', activebackground='darkblue',
-           command=main_menu.destroy).pack(pady=10)
-
-def logIn():
-    def toggle_password_visibility(entry, show_button):
-        if entry.cget('show') == '*':
-            entry.config(show='')
-            show_button.config(text='Hide')
-        else:
-            entry.config(show='*')
-            show_button.config(text='Show')
-
-    def log_in_action():
-        username_val = username.get().strip()
-        password_val = pw.get().strip()
-
-        conn = sqlite3.connect('customers.db')
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username_val, password_val))
-        user = cursor.fetchone()
-        conn.close()
-
-        if user:
-            error_label.config(text="Login successful!", fg="green")
-            login.after(1000, lambda: [login.destroy(), show_main_menu()]) 
-        else:
-            error_label.config(text="Invalid username or password", fg="red")
-
-    login = Toplevel()
-    login.geometry("500x400+485+175")
-    login.title('Log In')
-
-    username = StringVar()
-    pw = StringVar()
-  
-    Label(login, text='Log In', font=('Consolas', 25)).pack(pady=10)
-
-    frame = Frame(login)
-    frame.pack(pady=10)
-
-    Label(frame, text='Username:', font=('Poppins', 15)).grid(row=0, column=0, sticky=E)
-    Entry(frame, textvariable=username).grid(row=0, column=1, pady=5)
-
-    Label(frame, text='Password:', font=('Poppins', 15)).grid(row=1, column=0, sticky=E)
-    password_entry = Entry(frame, textvariable=pw, show='*')
-    password_entry.grid(row=1, column=1, pady=5)
-    
-    show_password_btn = Button(frame, text='Show', command=lambda: toggle_password_visibility(password_entry, show_password_btn))
-    show_password_btn.grid(row=1, column=2)
-
-    error_label = Label(login, text="", font=('Poppins', 12))
-    error_label.pack(pady=10)
-
-    Button(login, text='Log In', command=log_in_action, font=('Consolas', 15), padx=10, pady=5,
-           bg='blue', fg='white', activebackground='darkblue').pack(pady=10)
-
-def open_customer_window():
-    customer_window = Toplevel()
-    customer_window.geometry('600x600+485+175')
-    customer_window.title('Customer Details')
-    customer_window.config(background='#FFFACD')
-
-    Label(customer_window, text='Customer Details', font=('Consolas', 20), bg='#FFFACD').pack(pady=20)
-
-    Label(customer_window, text='Name:', font=('Consolas', 12), bg='#FFFACD').pack(anchor=W, padx=20, pady=5)
-    name_entry = Entry(customer_window, font=('Consolas', 12))
-    name_entry.pack(padx=20, fill=X)
-
-    Label(customer_window, text='Contact No.:', font=('Consolas', 12), bg='#FFFACD').pack(anchor=W, padx=20, pady=5)
-    contact_entry = Entry(customer_window, font=('Consolas', 12))
-    contact_entry.pack(padx=20, fill=X)
-
-    Label(customer_window, text='Address:', font=('Consolas', 12), bg='#FFFACD').pack(anchor=W, padx=20, pady=5)
-    address_entry = Entry(customer_window, font=('Consolas', 12))
-    address_entry.pack(padx=20, fill=X)
-
-    Label(customer_window, text='Car to be Reserved:', font=('Consolas', 12), bg='#FFFACD').pack(anchor=W, padx=20, pady=5)
-
-    selected_car = StringVar()
-    selected_car.set("None")
-
-    def select_car(car):
-        selected_car.set(car)
-
-    car_frame = Frame(customer_window, bg='#FFFACD')
-    car_frame.pack(pady=10)
-
-    cars = ['Toyota Fortuner 2025', 'Toyota Rush 2025', 'Toyota Inova 2025']
-    for car in cars:
-        Button(car_frame, text=car, font=('Consolas', 12), bg='blue', fg='white', activebackground='darkblue',
-               command=lambda c=car: select_car(c)).pack(side=LEFT, padx=5)
-
-    Label(customer_window, textvariable=selected_car, font=('Consolas', 12), bg='#FFFACD').pack(pady=5)
-
-    Label(customer_window, text='Quantity:', font=('Consolas', 12), bg='#FFFACD').pack(anchor=W, padx=20, pady=5)
-    quantity_entry = Entry(customer_window, font=('Consolas', 12))
-    quantity_entry.pack(padx=20, fill=X)
-
-    def submit_details():
-        name = name_entry.get()
-        contact = contact_entry.get()
-        address = address_entry.get()
-        car = selected_car.get()
-        quantity = quantity_entry.get()
-
-        conn = sqlite3.connect('customers.db')
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO customers (name, contact, address, car, quantity)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (name, contact, address, car, quantity))
+def reset_ids(table_name):
+    try:
+        cursor.execute(f"DELETE FROM sqlite_sequence WHERE name = ?", (table_name,))
         conn.commit()
-        conn.close()
+        print(f"Auto-increment ID reset for table '{table_name}'.")
+    except Exception as e:
+        print(f"Error resetting IDs: {e}")
 
-        customer_window.destroy()
+conn = sqlite3.connect('car_reservation_system.db')
+cursor = conn.cursor()
 
-    Button(customer_window, text='Submit', font=('Consolas', 15), bg='green', fg='white',
-           command=submit_details).pack(pady=10)
+cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    password TEXT NOT NULL)''')
 
-def show_database():
-        def fetch_data():
-            conn = sqlite3.connect('customers.db')
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM customers")
-            rows = cursor.fetchall()
-            conn.close()
-            return rows
+cursor.execute('''CREATE TABLE IF NOT EXISTS reservations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT,
+                    contact TEXT,
+                    address TEXT,
+                    car TEXT,
+                    quantity INTEGER)''')
+conn.commit()
 
-        def delete_customer():
-            selected_item = tree.selection()
-            if not selected_item:
-                return
+reset_ids('users')
+reset_ids('reservations')
 
-            customer_id = tree.item(selected_item[0])["values"][0]
-            conn = sqlite3.connect('customers.db')
-            cursor = conn.cursor()
+root = Tk()
+root.geometry('1000x750+300+20')
+root.title("Car Reservation System")
+root.resizable(False, False)
 
-            cursor.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
-            conn.commit()
+canvas = Canvas(root, width=1000, height=750, bg="black")
+canvas.pack()
 
-            cursor.execute("SELECT COUNT(*) FROM customers")
-            row_count = cursor.fetchone()[0]
-            if row_count == 0:
-                cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'customers'")
+try:
+    bg = PhotoImage(file='background.png')
+    show_icon = PhotoImage(file="show.png")
+    hide_icon = PhotoImage(file="unseen.png")
+except TclError:
+    bg = None
+    show_icon, hide_icon = None, None
 
-            conn.commit()
-            conn.close()
+def reset_ids(table_name):
+    try:
+        cursor.execute(f"DELETE FROM sqlite_sequence WHERE name = ?", (table_name,))
+        conn.commit()
+        print(f"Auto-increment ID reset for table '{table_name}'.")
+    except Exception as e:
+        print(f"Error resetting IDs: {e}")
 
-            tree.delete(selected_item)
+def clear_canvas():
+    canvas.delete("all")
+    if bg:
+        canvas.create_image(0, 0, image=bg, anchor="nw")
 
+def toggle_password(entry, button):
+    if entry.cget("show") == "*":
+        entry.config(show="")
+        button.config(image=hide_icon)
+    else:
+        entry.config(show="*")
+        button.config(image=show_icon)
 
-        database_window = Toplevel()
-        database_window.title("Customer Data")
-        database_window.geometry("800x400+450+175")
+def show_login():
+    clear_canvas()
+    canvas.create_text(500, 100, text="Login", font=("Arial", 25), fill="white")
 
-        frame = Frame(database_window)
-        frame.pack(fill=BOTH, expand=True)
+    canvas.create_text(300, 200, text="Username:", font=("Arial", 15), fill="white", anchor="e")
+    username_entry = Entry(root, font=("Arial", 15))
+    canvas.create_window(500, 200, window=username_entry, width=300)
 
-        tree = ttk.Treeview(frame, columns=("ID", "Name", "Contact", "Address", "Car", "Quantity"), show="headings")
-        tree.pack(fill=BOTH, expand=True, side=LEFT)
+    canvas.create_text(300, 250, text="Password:", font=("Arial", 15), fill="white", anchor="e")
+    password_entry = Entry(root, font=("Arial", 15), show="*")
+    canvas.create_window(500, 250, window=password_entry, width=300)
 
-        scrollbar = Scrollbar(frame, orient=VERTICAL, command=tree.yview)
-        scrollbar.pack(side=RIGHT, fill=Y)
-        tree.configure(yscroll=scrollbar.set)
+    if show_icon:
+        show_pw_btn = Button(root, image=show_icon, command=lambda: toggle_password(password_entry, show_pw_btn), borderwidth=0)
+        canvas.create_window(670, 250, window=show_pw_btn, width=30, height=30)
 
-        tree.heading("ID", text="ID")
-        tree.heading("Name", text="Name")
-        tree.heading("Contact", text="Contact")
-        tree.heading("Address", text="Address")
-        tree.heading("Car", text="Car")
-        tree.heading("Quantity", text="Quantity")
+    error_label = Label(root, text="", font=("Arial", 12), bg="black", fg="red")
+    canvas.create_window(500, 300, window=error_label)
 
-        tree.column("ID", width=50, anchor=CENTER)
-        tree.column("Name", width=100, anchor=W)
-        tree.column("Contact", width=100, anchor=W)
-        tree.column("Address", width=150, anchor=W)
-        tree.column("Car", width=100, anchor=W)
-        tree.column("Quantity", width=80, anchor=CENTER)
+    def authenticate():
+        username = username_entry.get().strip()
+        password = password_entry.get().strip()
+        cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
+        user = cursor.fetchone()
+        if user and user[0] == password:
+            show_main_form(username)
+        else:
+            error_label.config(text="Invalid username or password!")
 
-        for row in fetch_data():
-            tree.insert("", END, values=row)
+    login_btn = Button(root, text="Login", font=("Arial", 12), bg="blue", fg="white", command=authenticate)
+    canvas.create_window(500, 350, window=login_btn, width=200)
 
-        delete_button = Button(database_window, text="Delete Selected", font=('Consolas', 12), bg='red', fg='white',
-                               command=delete_customer)
-        delete_button.pack(pady=20)
+    signup_btn = Button(root, text="Sign Up", font=("Arial", 12), bg="blue", fg="white", command=show_sign_up)
+    canvas.create_window(500, 400, window=signup_btn, width=200)
 
+def show_main_form(username):
+    clear_canvas()
+    canvas.create_text(500, 50, text=f"Welcome, {username}!", font=("Arial", 25), fill="white")
 
-window = Tk()
-window.geometry("800x400+400+150")
-window.title('Car Reservation System')
-window.config(background='#FEFEF2', padx=80, pady=60)
+    customer_info_btn = Button(root, text="Customer Info", font=("Arial", 15), bg="blue", fg="white", command=lambda: show_customer_info(username))
+    canvas.create_window(500, 200, window=customer_info_btn, width=200)
 
-Label(window, text='Welcome to Car Reservation System!', font=('Consolas', 18), bg='#FFFDC8').pack(pady=20)
-Button(window, text='Start', font=('Consolas', 15), padx=15, command=showChooseWindow,
-       bg='blue', fg='white', activebackground='darkblue').pack(pady=20)
+    show_data_btn = Button(root, text="Show Data", font=("Arial", 15), bg="blue", fg="white", command=lambda: show_data(username))
+    canvas.create_window(500, 250, window=show_data_btn, width=200)
 
-window.mainloop()
+    logout_btn = Button(root, text="Log Out", font=("Arial", 15), bg="blue", fg="white", command=show_login)
+    canvas.create_window(500, 300, window=logout_btn, width=200)
+
+def show_data(username):
+    print(f"Username passed to show_data: {username}")
+    clear_canvas()
+    canvas.create_text(500, 50, text="Reservation Data", font=("Arial", 25), fill="white")
+
+    cursor.execute("SELECT * FROM reservations")
+    rows = cursor.fetchall()
+
+    selected_id = IntVar(value=-1)
+
+    if rows:
+        canvas.create_text(100, 100, text="Name", font=("Arial", 12, "bold"), fill="white", anchor="w")
+        canvas.create_text(300, 100, text="Contact No.", font=("Arial", 12, "bold"), fill="white", anchor="w")
+        canvas.create_text(470, 100, text="Address", font=("Arial", 12, "bold"), fill="white", anchor="w")
+        canvas.create_text(650, 100, text="Car", font=("Arial", 12, "bold"), fill="white", anchor="w")
+        canvas.create_text(820, 100, text="Quantity", font=("Arial", 12, "bold"), fill="white", anchor="w")
+
+        for idx, row in enumerate(rows):
+            y_position = 130 + idx * 30
     
+            name_text = row[1] if len(row[1]) <= 20 else row[1][:17] + "..."
+    
+            name_btn = Button(
+                root, text=name_text, font=("Arial", 12), bg="blue", fg="white", anchor="w",
+                command=lambda r=row: selected_id.set(r[0])
+            )
+            canvas.create_window(100, y_position, window=name_btn, width=180, anchor="w")
+
+            canvas.create_text(300, y_position, text=row[2], font=("Arial", 12), fill="white", anchor="w")
+            canvas.create_text(470, y_position, text=row[3], font=("Arial", 12), fill="white", anchor="w")
+            canvas.create_text(650, y_position, text=row[4], font=("Arial", 12), fill="white", anchor="w")
+            canvas.create_text(820, y_position, text=str(row[5]), font=("Arial", 12), fill="white", anchor="w")
+
+    else:
+        canvas.create_text(500, 150, text="No data available", font=("Arial", 12), fill="white")
+
+    def delete_reservation():
+        selected = selected_id.get()
+        if selected == -1:
+            error_label.config(text="Please select a record to delete!", fg="red")
+        else:
+            cursor.execute("DELETE FROM reservations WHERE id = ?", (selected,))
+            conn.commit()
+            error_label.config(text="Record deleted successfully!", fg="green")
+            show_data(username)
+    
+    def update_reservation():
+        selected = selected_id.get()
+        if selected == -1:
+            error_label.config(text="Please select a record to update!", fg="red")
+            return
+        
+        cursor.execute("SELECT * FROM reservations WHERE id = ?", (selected,))
+        row = cursor.fetchone()
+        if row:
+            update_window = Toplevel(root)
+            update_window.title("Update Reservation")
+            update_window.geometry("250x300")
+            update_window.configure(bg="gray")
+            
+            Label(update_window, text="Name", font=("Arial", 12)).grid(row=0, column=0, padx=10, pady=10)
+            name_entry = Entry(update_window)
+            name_entry.grid(row=0, column=1, padx=10, pady=10)
+            name_entry.insert(0, row[1])
+            
+            Label(update_window, text="Contact", font=("Arial", 12)).grid(row=1, column=0, padx=10, pady=10)
+            contact_entry = Entry(update_window)
+            contact_entry.grid(row=1, column=1, padx=10, pady=10)
+            contact_entry.insert(0, row[2])
+            
+            Label(update_window, text="Address", font=("Arial", 12)).grid(row=2, column=0, padx=10, pady=10)
+            address_entry = Entry(update_window)
+            address_entry.grid(row=2, column=1, padx=10, pady=10)
+            address_entry.insert(0, row[3])
+            
+            Label(update_window, text="Car", font=("Arial", 12)).grid(row=3, column=0, padx=10, pady=10)
+            car_entry = Entry(update_window)
+            car_entry.grid(row=3, column=1, padx=10, pady=10)
+            car_entry.insert(0, row[4])
+            
+            Label(update_window, text="Quantity", font=("Arial", 12)).grid(row=4, column=0, padx=10, pady=10)
+            quantity_entry = Entry(update_window)
+            quantity_entry.grid(row=4, column=1, padx=10, pady=10)
+            quantity_entry.insert(0, row[5])
+            
+            def save_updates():
+                new_name = name_entry.get()
+                new_contact = contact_entry.get()
+                new_address = address_entry.get()
+                new_car = car_entry.get()
+                new_quantity = quantity_entry.get()
+                
+                cursor.execute(
+                    "UPDATE reservations SET name = ?, contact = ?, address = ?, car = ?, quantity = ? WHERE id = ?", 
+                    (new_name, new_contact, new_address, new_car, new_quantity, selected)
+                )
+                conn.commit()
+                update_window.destroy()
+                error_label.config(text="Record updated successfully!", fg="green")
+                show_data(username)
+            
+            save_btn = Button(update_window, text="Save Changes", bg="green", command=save_updates)
+            save_btn.grid(row=5, column=0, columnspan=2, pady=20)
+    
+    error_label = Label(root, text="", font=("Arial", 12), bg="black", fg="red")
+    canvas.create_window(500, 500, window=error_label)
+    
+    delete_btn = Button(root, text="Delete Selected", font=("Arial", 12), bg="red", fg="white", command=delete_reservation)
+    canvas.create_window(500, 550, window=delete_btn, width=200)
+    
+    update_btn = Button(root, text="Update Selected", font=("Arial", 12), bg="green", fg="white", command=update_reservation)
+    canvas.create_window(500, 600, window=update_btn, width=200)
+    
+    back_btn = Button(root, text="Back", font=("Arial", 12), bg="blue", fg="white", command=lambda: show_main_form(username))
+    canvas.create_window(500, 650, window=back_btn, width=200)
+
+
+
+def show_customer_info(username):
+    clear_canvas()
+    canvas.create_text(500, 100, text="Customer Info", font=("Arial", 25), fill="white")
+
+    canvas.create_text(300, 200, text="Name:", font=("Arial", 15), fill="white", anchor="e")
+    name_entry = Entry(root, font=("Arial", 15))
+    canvas.create_window(500, 200, window=name_entry, width=300)
+
+    canvas.create_text(300, 250, text="Contact No.:", font=("Arial", 15), fill="white", anchor="e")
+    contact_entry = Entry(root, font=("Arial", 15))
+    canvas.create_window(500, 250, window=contact_entry, width=300)
+
+    canvas.create_text(300, 300, text="Address:", font=("Arial", 15), fill="white", anchor="e")
+    address_entry = Entry(root, font=("Arial", 15))
+    canvas.create_window(500, 300, window=address_entry, width=300)
+
+    canvas.create_text(300, 350, text="Car to be Reserved:", font=("Arial", 15), fill="white", anchor="e")
+
+    selected_car_label = Label(root, text="Selected Car: None", font=("Arial", 12), bg="black", fg="white")
+    canvas.create_window(500, 510, window=selected_car_label)
+
+    car_buttons = [
+        ("Toyota Fortuner 2025", 300, 420),
+        ("Toyota Rush 2025", 500, 420),
+        ("Toyota Vios 2025", 700, 420),
+        ("Toyota Hi Ace 2025", 300, 460),
+        ("Toyota Grandia 2025", 500, 460),
+        ("Toyota Raize 2025", 700, 460),
+    ]
+
+    car_button_refs = [] 
+
+    def select_car(car_name):
+        selected_car_label.config(text=f"Selected Car: {car_name}")
+
+    for car, x, y in car_buttons:
+        btn = Button(root, text=car, font=("Arial", 10), command=lambda c=car: select_car(c))
+        car_button_refs.append(btn) 
+        canvas.create_window(x, y, window=btn, width=180, height=30)
+
+    canvas.create_text(300, 550, text="Quantity:", font=("Arial", 15), fill="white", anchor="e")
+    quantity_entry = Entry(root, font=("Arial", 15))
+    canvas.create_window(500, 550, window=quantity_entry, width=100)
+
+    def submit_customer_details():
+        name = name_entry.get().strip()
+        contact = contact_entry.get().strip()
+        address = address_entry.get().strip()
+        selected_car = selected_car_label.cget("text").replace("Selected Car: ", "")
+        quantity = quantity_entry.get().strip()
+
+        if not name or not contact or not address or selected_car == "None" or not quantity:
+            error_label.config(text="Please fill out all fields!", fg="red")
+        else:
+            cursor.execute("INSERT INTO reservations (name, contact, address, car, quantity) VALUES (?, ?, ?, ?, ?)",
+                           (name, contact, address, selected_car, int(quantity)))
+            conn.commit()
+            error_label.config(text="Details Submitted Successfully!", fg="green")
+            print(f"Customer Details: Name={name}, Contact={contact}, Address={address}, Car={selected_car}, Quantity={quantity}")
+
+    error_label = Label(root, text="", font=("Arial", 12), bg="black", fg="red")
+    canvas.create_window(500, 600, window=error_label)
+
+    submit_btn = Button(root, text="Submit", font=("Arial", 12), bg="blue", fg="white", command=submit_customer_details)
+    canvas.create_window(500, 650, window=submit_btn, width=200)
+
+    def cleanup_and_back():
+        for btn in car_button_refs: 
+            btn.destroy()
+        selected_car_label.destroy() 
+        show_main_form(username)
+
+    back_btn = Button(root, text="Back", font=("Arial", 12), bg="blue", fg="white", command=cleanup_and_back)
+    canvas.create_window(500, 700, window=back_btn, width=200)
+
+def show_login():
+    clear_canvas()
+    canvas.create_text(500, 100, text="Login", font=("Arial", 25), fill="white")
+
+    canvas.create_text(300, 200, text="Username:", font=("Arial", 15), fill="white", anchor="e")
+    username_entry = Entry(root, font=("Arial", 15))
+    canvas.create_window(500, 200, window=username_entry, width=300)
+
+    canvas.create_text(300, 250, text="Password:", font=("Arial", 15), fill="white", anchor="e")
+    password_entry = Entry(root, font=("Arial", 15), show="*")
+    canvas.create_window(500, 250, window=password_entry, width=300)
+
+    show_pw_btn = Button(root, image=show_icon, command=lambda: toggle_password(password_entry, show_pw_btn), borderwidth=0)
+    canvas.create_window(670, 250, window=show_pw_btn, width=30, height=30)
+
+    error_label = Label(root, text="", font=("Arial", 12), bg="black", fg="red")
+    canvas.create_window(500, 300, window=error_label)
+
+    def authenticate():
+        username = username_entry.get()
+        password = password_entry.get()
+
+        cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
+        user = cursor.fetchone()
+
+        if user and user[0] == password:
+            show_main_form(username)
+        else:
+            error_label.config(text="Invalid username or password!")
+
+    login_btn = Button(root, text="Login", font=("Arial", 12), bg="blue", fg="white", command=authenticate)
+    canvas.create_window(500, 350, window=login_btn, width=200)
+
+    signup_btn = Button(root, text="Sign Up", font=("Arial", 12), bg="blue", fg="white", command=show_sign_up)
+    canvas.create_window(500, 400, window=signup_btn, width=200)
+
+def show_sign_up():
+    clear_canvas()
+    canvas.create_text(500, 100, text="Sign Up", font=("Arial", 25), fill="white")
+
+    canvas.create_text(300, 200, text="Username:", font=("Arial", 15), fill="white", anchor="e")
+    signup_username_entry = Entry(root, font=("Arial", 15))
+    canvas.create_window(500, 200, window=signup_username_entry, width=300)
+
+    canvas.create_text(300, 250, text="Password:", font=("Arial", 15), fill="white", anchor="e")
+    signup_password_entry = Entry(root, font=("Arial", 15), show="*")
+    canvas.create_window(500, 250, window=signup_password_entry, width=300)
+
+    canvas.create_text(300, 300, text="Confirm Password:", font=("Arial", 15), fill="white", anchor="e")
+    confirm_password_entry = Entry(root, font=("Arial", 15), show="*")
+    canvas.create_window(500, 300, window=confirm_password_entry, width=300)
+
+    
+    show_pw_btn = Button(root, image=show_icon, command=lambda: toggle_password(signup_password_entry, show_pw_btn), borderwidth=0)
+    canvas.create_window(670, 250, window=show_pw_btn, width=30, height=30)
+
+    show_confirm_pw_btn = Button(root, image=show_icon, command=lambda: toggle_password(confirm_password_entry, show_confirm_pw_btn), borderwidth=0)
+    canvas.create_window(670, 300, window=show_confirm_pw_btn, width=30, height=30)
+
+    error_label = Label(root, text="", font=("Arial", 12), bg="black", fg="red")
+    canvas.create_window(500, 350, window=error_label)
+
+    def submit_signup():
+        username = signup_username_entry.get().strip()
+        password = signup_password_entry.get().strip()
+        confirm_password = confirm_password_entry.get().strip()
+
+        if not username or not password or not confirm_password:
+            error_label.config(text="Please fill out all fields!", fg="red")
+        elif password != confirm_password:
+            error_label.config(text="Passwords do not match!", fg="red")
+        else:
+            try:
+                cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+                conn.commit()
+                error_label.config(text="User created successfully!", fg="green")
+                show_login()
+            except sqlite3.IntegrityError:
+                error_label.config(text="Username already exists!", fg="red")
+
+    signup_btn = Button(root, text="Sign Up", font=("Arial", 12), bg="blue", fg="white", command=submit_signup)
+    canvas.create_window(500, 400, window=signup_btn, width=200)
+
+    back_btn = Button(root, text="Back", font=("Arial", 12), bg="blue", fg="white", command=show_login)
+    canvas.create_window(500, 450, window=back_btn, width=200)
+
+show_login()
+
+root.mainloop()
